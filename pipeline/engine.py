@@ -117,6 +117,12 @@ ROSTER_STATUS = {"RES": "IR", "DEV": "Inactive"}
 OFF_TEAM = ("CUT", "RET", "EXE", "TRC", "TRT")
 
 
+def _norm(name) -> str:
+    """'A.J. Brown Jr.' -> 'ajbrown' so the two sources' spellings match."""
+    s = "".join(ch for ch in str(name or "").lower() if ch.isalpha() or ch == " ")
+    return "".join(w for w in s.split() if w not in ("jr", "sr", "ii", "iii", "iv", "v"))
+
+
 def build_identity(sleeper: dict | None, rosters: list[dict], today: dt.date) -> dict:
     """id -> {name, team, pos, age, status}. Sleeper wins; nflverse fills gaps."""
     ident: dict = {}
@@ -125,6 +131,8 @@ def build_identity(sleeper: dict | None, rosters: list[dict], today: dt.date) ->
         if r.get("sleeper_id") and r.get("gsis_id"):
             sid_to_gsis[str(r["sleeper_id"])] = r["gsis_id"]
     roster_by_gsis = {r["gsis_id"]: r for r in rosters if r.get("gsis_id")}
+    name_to_gsis = {(_norm(r.get("full_name")), r.get("position")): r["gsis_id"]
+                    for r in rosters if r.get("gsis_id") and r.get("full_name")}
 
     if sleeper:
         for sid, p in sleeper.items():
@@ -133,11 +141,14 @@ def build_identity(sleeper: dict | None, rosters: list[dict], today: dt.date) ->
             pos = p.get("position")
             if pos not in C.FANTASY_POSITIONS:
                 continue
-            gsis = sid_to_gsis.get(str(sid)) or (p.get("gsis_id") or "").strip() or None
+            name = p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}".strip()
+            gsis = (sid_to_gsis.get(str(sid)) or (p.get("gsis_id") or "").strip()
+                    or name_to_gsis.get((_norm(name), pos)) or None)
+            if gsis in ident:
+                continue                      # already matched (duplicate Sleeper entry)
             team = p.get("team")
             if not gsis and not (team and p.get("active")):
                 continue                      # unmatched and not on a team: skip
-            name = p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}".strip()
             if not name:
                 continue
             age = years_between(p.get("birth_date"), today)

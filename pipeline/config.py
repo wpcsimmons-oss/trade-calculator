@@ -155,7 +155,7 @@ PAGE_CONFIG = {
     # Waiver score = lineup gain + waiverVorWeight * value over replacement
     #              + trend and role-opening bonuses (in fantasy points)
     "waiverVorWeight": 0.35,
-    "waiverTrendWeight": 4.0,       # points of score per +1 pt/game usage trend
+    "waiverTrendWeight": 1.5,       # points of score per +1 pt/game usage trend
     "waiverOpeningBonus": 6.0,      # bonus when the player ahead of him is hurt
     "waiverScheduleWeight": 20.0,   # per +1.00 of schedule ease (so +5% = 1 pt)
     "stashMaxAge": 24,              # keeper mode "stash" flag

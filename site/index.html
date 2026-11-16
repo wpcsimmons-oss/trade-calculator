@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fantasy Trade Calculator &amp; Waiver Helper</title>
+<meta name="description" content="Free fantasy football trade calculator and waiver wire helper. Usage-based values, refreshed twice a week.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Fantasy Trade Calculator <span class="amp">&amp;</span> Waiver Helper</h1>
+    <p id="asof" class="asof">Loading player data…</p>
+  </div>
+  <nav class="tabs wrap" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="roster" aria-selected="true">Settings &amp; Roster</button>
+    <button role="tab" data-tab="trade" aria-selected="false">Trade Calculator</button>
+    <button role="tab" data-tab="waiver" aria-selected="false">Waiver Wire</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div id="error" class="card error" hidden></div>
+  <div id="notes" class="card notice" hidden></div>
+
+  <!-- ============ TAB 1: SETTINGS & ROSTER ============ -->
+  <section id="tab-roster" class="tab">
+    <div class="card">
+      <h2>League settings</h2>
+      <div class="grid">
+        <div class="field">
+          <span class="label">League type</span>
+          <div class="seg" id="set-leagueType">
+            <button data-v="redraft">Redraft</button><button data-v="keeper">Keeper</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label">Scoring</span>
+          <div class="seg" id="set-scoring">
+            <button data-v="ppr">PPR</button><button data-v="half">Half-PPR</button><button data-v="std">Standard</button>
+          </div>
+        </div>
+        <label class="field"><span class="label">League size</span>
+          <select id="set-teams">
+            <option value="8">8 teams</option><option value="10">10 teams</option><option value="12">12 teams</option>
+            <option value="14">14 teams</option><option value="16">16 teams</option>
+          </select>
+        </label>
+        <label class="field keeper-only"><span class="label">Keepers allowed</span>
+          <input type="number" id="set-keepers" min="0" max="15" inputmode="numeric">
+        </label>
+        <label class="field"><span class="label">FAAB budget left ($)</span>
+          <input type="number" id="set-faab" min="0" placeholder="blank = rolling waivers" inputmode="numeric">
+        </label>
+      </div>
+      <h3>Starting lineup</h3>
+      <div class="lineup" id="set-lineup"></div>
+      <div class="grid">
+        <label class="field"><span class="label">Bench slots</span>
+          <input type="number" id="set-bench" min="0" max="10" inputmode="numeric">
+        </label>
+        <label class="field"><span class="label">IR slots</span>
+          <input type="number" id="set-ir" min="0" max="5" inputmode="numeric">
+        </label>
+        <div class="field"><span class="label">&nbsp;</span>
+          <button class="btn ghost" id="reset-settings">Reset settings to default</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row-head">
+        <h2>My roster</h2>
+        <div class="actions">
+          <button class="btn" id="optimize">Optimize lineup</button>
+          <button class="btn ghost danger" id="clear-roster">Clear roster</button>
+        </div>
+      </div>
+      <p class="hint">Tap a slot and type a name. Each slot only offers players who can play there. “Value” is rest-of-season points above a waiver-wire replacement.</p>
+      <div id="roster-msg" class="toast" hidden></div>
+      <div id="slots"></div>
+      <div id="roster-summary"></div>
+    </div>
+
+    <div class="card keeper-only" id="keeper-card">
+      <h2>Keeper outlook</h2>
+      <p class="hint">Enter each player’s keeper cost (the draft round you give up) in the roster above. “Implied round” is where his next-season value would get drafted in your league. Cheap keepers show a positive surplus.</p>
+      <div id="keeper-table"></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2: TRADE ============ -->
+  <section id="tab-trade" class="tab" hidden>
+    <div class="card">
+      <h2>Build a trade</h2>
+      <div class="two">
+        <div>
+          <h3>You give <span class="sub">(from your roster)</span></h3>
+          <div id="give-picker"></div>
+          <div id="give-list" class="chips"></div>
+        </div>
+        <div>
+          <h3>You get <span class="sub">(anyone else)</span></h3>
+          <div id="get-picker"></div>
+          <div id="get-list" class="chips"></div>
+        </div>
+      </div>
+      <button class="btn ghost" id="clear-trade">Clear trade</button>
+    </div>
+    <div id="trade-result"></div>
+  </section>
+
+  <!-- ============ TAB 3: WAIVER ============ -->
+  <section id="tab-waiver" class="tab" hidden>
+    <div class="card">
+      <h2>Waiver wire</h2>
+      <p class="hint">Players not on your roster, ranked by how much they would help <em>your</em> team: lineup gain, usage trend, role openings and schedule. Tick “Taken” for players already rostered in your league to hide them.</p>
+      <div class="filters">
+        <div class="seg" id="waiver-pos">
+          <button data-v="ALL">All</button><button data-v="QB">QB</button><button data-v="RB">RB</button>
+          <button data-v="WR">WR</button><button data-v="TE">TE</button><button data-v="K">K</button><button data-v="DST">DST</button>
+        </div>
+        <input type="search" id="waiver-search" placeholder="Search name or team">
+      </div>
+      <div class="filters">
+        <button class="btn ghost" id="mark-likely">Hide players likely rostered</button>
+        <button class="btn ghost" id="reset-taken">Un-hide all (<span id="taken-count">0</span>)</button>
+        <label class="check"><input type="checkbox" id="show-taken"> Show taken</label>
+      </div>
+    </div>
+    <div class="card" id="drops-card">
+      <h2>Drop candidates</h2>
+      <div id="drops"></div>
+    </div>
+    <div id="waiver-list"></div>
+    <button class="btn ghost wide" id="waiver-more">Show more</button>
+  </section>
+
+  <!-- ============ FOOTER INFO ============ -->
+  <section class="card info">
+    <details>
+      <summary>How values are calculated</summary>
+      <ol>
+        <li><strong>Usage, not box scores.</strong> Each player’s share of his team’s targets, air yards, carries, red-zone and goal-line touches, plus snap share, is averaged with extra weight on the last 3–4 games.</li>
+        <li><strong>Luck is removed.</strong> Yards per touch and catch rate are pulled toward the league average for the position, and touchdowns come mostly from <em>where</em> the touches happen (a goal-line carry is worth far more than a midfield one), not from how many TDs he happened to score.</li>
+        <li><strong>Schedule.</strong> Every remaining game is adjusted for how many fantasy points that defense allows to the position. Bye weeks count as zero. Injured players are discounted.</li>
+        <li><strong>Value over replacement.</strong> Your league size and lineup decide how good a “free” waiver player is at each position. A player’s value is his rest-of-season points above that level, with fantasy playoff weeks (15–17) counted extra.</li>
+        <li><strong>Trades</strong> are scored by rebuilding your best starting lineup for every remaining week before and after the deal — not by adding up player values. If you receive more players than you give, the player you’d have to drop is charged to you. The other team is estimated as a league-average roster.</li>
+        <li><strong>Keeper mode</strong> adds a next-season value: current per-game production × an age curve for the position × how secure the player’s role is. That is ranked into an implied draft round and compared with the keeper cost.</li>
+      </ol>
+      <p>Every weight lives in one file in the repository: <code>pipeline/config.py</code>.</p>
+    </details>
+    <details>
+      <summary>Data sources</summary>
+      <ul id="sources"></ul>
+      <p class="hint">This is a hobby tool, not betting or financial advice. Not affiliated with the NFL, Sleeper or nflverse. Your league settings and roster are stored only in this browser.</p>
+    </details>
+  </section>
+</main>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
